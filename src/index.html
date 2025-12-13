@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Radio Maker</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-slate-900 text-slate-100 font-sans selection:bg-purple-500 selection:text-white min-h-screen">
+
+    <!-- Header -->
+    <header class="bg-slate-800 border-b border-slate-700 sticky top-0 z-20 shadow-md">
+        <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <div class="bg-purple-600 p-2 rounded-lg">
+                    <i data-lucide="radio" class="w-6 h-6 text-white"></i>
+                </div>
+                <h1 class="text-xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+                    AI Radio Maker
+                </h1>
+            </div>
+            <button id="toggleSettingsBtn" class="p-2 rounded-full transition-colors hover:bg-slate-700 text-slate-400">
+                <i data-lucide="settings" class="w-5 h-5"></i>
+            </button>
+        </div>
+        
+        <!-- Settings Panel -->
+        <div id="settingsPanel" class="hidden bg-slate-900 border-b border-slate-700 p-4 animate-fade-in">
+            <div class="max-w-6xl mx-auto space-y-6">
+                
+                <!-- LLM Settings -->
+                <div>
+                    <h3 class="text-sm font-bold text-purple-400 mb-3 flex items-center gap-2">
+                        <i data-lucide="bot" class="w-4 h-4"></i> LLM Server (LM Studio)
+                    </h3>
+                    <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                        <!-- API URL -->
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1 uppercase tracking-wider">API Base URL</label>
+                            <div class="flex gap-2">
+                                <input type="text" id="apiUrlInput" value="http://192.168.10.106:1234/v1" placeholder="http://192.168.10.106:1234/v1" class="flex-grow bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm focus:border-purple-500 focus:outline-none text-slate-200">
+                                <button id="testConnectionBtn" class="px-3 py-2 rounded text-xs font-semibold border bg-slate-800 border-slate-600 hover:bg-slate-700 text-slate-300 transition-all" title="接続テスト">
+                                    <i data-lucide="wifi" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                            <p id="connectionStatusMsg" class="text-[10px] text-slate-500 mt-1">LM Studio等のローカルサーバーURL (末尾に /v1 が必要)</p>
+                        </div>
+                        
+                        <!-- API Key -->
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1 uppercase tracking-wider">API Key (Optional)</label>
+                            <input type="password" id="apiKeyInput" value="lm-studio" placeholder="lm-studio" class="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm focus:border-purple-500 focus:outline-none text-slate-200">
+                        </div>
+        
+                        <!-- Model ID -->
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1 uppercase tracking-wider flex items-center justify-between">
+                               Model ID
+                               <button id="fetchModelsBtn" class="text-[10px] text-purple-400 hover:text-purple-300 flex items-center gap-1">
+                                 <i data-lucide="refresh-cw" class="w-3 h-3"></i> リスト更新
+                               </button>
+                            </label>
+                            <div class="relative">
+                                <i data-lucide="database" class="absolute left-3 top-2.5 w-4 h-4 text-slate-500"></i>
+                                <input type="text" id="modelIdInput" value="local-model" placeholder="local-model" class="w-full bg-slate-800 border border-slate-700 rounded pl-9 pr-3 py-2 text-sm focus:border-purple-500 focus:outline-none text-slate-200">
+                                <div id="modelSelectContainer" class="absolute right-2 top-2 hidden">
+                                   <select id="modelSelect" class="bg-slate-700 text-xs text-slate-200 rounded border border-slate-600 focus:outline-none max-w-[120px]">
+                                     <option value="local-model">Select...</option>
+                                   </select>
+                                </div>
+                            </div>
+                            <p id="modelFetchErrorMsg" class="text-xs text-slate-500 mt-1">使用するモデルID。LM Studioでは通常 "local-model" です。</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Separator -->
+                <div class="border-t border-slate-800"></div>
+
+                <!-- TTS Settings -->
+                <div>
+                    <h3 class="text-sm font-bold text-cyan-400 mb-3 flex items-center gap-2">
+                        <i data-lucide="mic-2" class="w-4 h-4"></i> Voice Synthesis API (Voicevox)
+                    </h3>
+                    <div class="grid gap-4 md:grid-cols-3">
+                        <!-- TTS URL -->
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1 uppercase tracking-wider">Voicevox Base URL</label>
+                            <input type="text" id="ttsUrlInput" placeholder="http://192.168.10.106:8080" class="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none text-slate-200">
+                            <p class="text-[10px] text-slate-500 mt-1">VoicevoxサーバーのベースURL (POST /api/tasks/synthesis 使用)</p>
+                        </div>
+                        
+                        <!-- TTS Key -->
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1 uppercase tracking-wider">X-API-KEY (Optional)</label>
+                            <input type="password" id="ttsKeyInput" placeholder="API Key" class="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none text-slate-200">
+                        </div>
+
+                        <!-- Speaker ID (Changed to Select) -->
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1 uppercase tracking-wider flex items-center justify-between">
+                                Speaker
+                                <button id="fetchTtsSpeakersBtn" class="text-[10px] text-cyan-400 hover:text-cyan-300 flex items-center gap-1">
+                                    <i data-lucide="refresh-cw" class="w-3 h-3"></i> リスト更新
+                                </button>
+                            </label>
+                            <div class="relative">
+                                <i data-lucide="mic" class="absolute left-3 top-2.5 w-4 h-4 text-slate-500"></i>
+                                <select id="ttsSpeakerSelect" class="w-full bg-slate-800 border border-slate-700 rounded pl-9 pr-3 py-2 text-sm focus:border-cyan-500 focus:outline-none text-slate-200 appearance-none">
+                                    <option value="1">ずんだもん (ノーマル) [ID:1]</option>
+                                </select>
+                                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-400">
+                                    <i data-lucide="chevron-down" class="w-4 h-4"></i>
+                                </div>
+                            </div>
+                            <p id="ttsSpeakerFetchErrorMsg" class="text-[10px] text-slate-500 mt-1">VOICEVOX等の話者を選択</p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- Left Column: Inputs (4 cols) -->
+        <div class="lg:col-span-4 space-y-6">
+            
+            <!-- Topic Input -->
+            <section>
+                <div class="flex items-center justify-between mb-2">
+                    <label class="flex items-center gap-2 text-sm font-semibold text-slate-300">
+                        <i data-lucide="mic" class="w-4 h-4 text-purple-400"></i>
+                        番組のテーマ (お題)
+                    </label>
+                </div>
+                <textarea id="topicInput" placeholder="例: 今日のITニュース、最近食べたもの、AIについて" class="w-full h-20 bg-slate-800 border border-slate-700 rounded-lg p-3 text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none resize-none transition-shadow mb-2 text-slate-200"></textarea>
+
+                <!-- Reference Text Input -->
+                <div class="bg-slate-800/50 rounded-lg p-3 border border-slate-700">
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="flex items-center gap-2 text-xs font-semibold text-slate-400">
+                            <i data-lucide="file-text" class="w-3 h-3"></i>
+                            参考資料 / ニュース記事（任意）
+                        </label>
+                        <button id="searchNewsBtn" class="text-[10px] bg-slate-700 hover:bg-slate-600 text-slate-300 px-2 py-1 rounded flex items-center gap-1 transition-colors" title="Googleニュースを別タブで開く">
+                            <i data-lucide="search" class="w-3 h-3"></i>
+                            ネタを検索
+                        </button>
+                    </div>
+                    <textarea id="referenceInput" placeholder="Webニュースの記事本文などをここに貼り付けると、その内容を元に台本を作ります。" class="w-full h-32 bg-slate-900 border border-slate-700 rounded-md p-2 text-xs focus:ring-1 focus:ring-purple-500 focus:outline-none resize-none text-slate-300"></textarea>
+                </div>
+            </section>
+
+            <!-- Persona Selection -->
+            <section>
+                <label class="flex items-center gap-2 text-sm font-semibold text-slate-300 mb-2">
+                    <i data-lucide="user" class="w-4 h-4 text-purple-400"></i>
+                    パーソナリティ選択
+                </label>
+                <div id="personaList" class="space-y-2 max-h-[400px] overflow-y-auto pr-1 custom-scrollbar">
+                    <!-- Javascriptでここにボタンを生成 -->
+                </div>
+
+                <!-- Custom Persona Editor (Initially Hidden) -->
+                <div id="customPersonaEditor" class="hidden mt-2 p-3 bg-slate-800/50 rounded-lg border border-slate-700 space-y-3 animate-fade-in">
+                    <!-- Icon Upload -->
+                    <div>
+                        <label class="text-xs text-slate-400 mb-1 block">アイコン画像</label>
+                        <div class="flex items-center gap-3">
+                            <div id="customIconPreview" class="w-12 h-12 rounded-lg bg-slate-700 border border-slate-600 flex items-center justify-center cursor-pointer hover:bg-slate-600 overflow-hidden relative group">
+                                <i data-lucide="image" class="w-5 h-5 text-slate-400"></i>
+                            </div>
+                            <input type="file" id="iconFileInput" accept="image/*" class="hidden">
+                            <div class="text-xs text-slate-500">
+                                <span class="text-purple-400 hover:underline cursor-pointer" onclick="document.getElementById('iconFileInput').click()">画像をアップロード</span><br>
+                                またはデフォルトを使用
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Name Input -->
+                    <div>
+                        <label class="text-xs text-slate-400 mb-1 block">名前</label>
+                        <input type="text" id="customNameInput" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-sm focus:border-purple-500 focus:outline-none text-slate-200">
+                    </div>
+
+                    <!-- System Prompt Input -->
+                    <div>
+                        <label class="text-xs text-slate-400 mb-1 block">AI設定 (System Prompt)</label>
+                        <textarea id="customPromptInput" rows="6" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-xs focus:border-purple-500 focus:outline-none font-mono leading-relaxed text-slate-200"></textarea>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Generate Button -->
+            <button id="generateBtn" class="w-full py-4 rounded-xl font-bold text-lg shadow-lg flex items-center justify-center gap-2 transition-all duration-300 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed">
+                <i data-lucide="play" class="w-5 h-5 fill-current"></i>
+                台本を生成
+            </button>
+            
+            <!-- Error Message Area -->
+            <div id="errorArea" class="hidden bg-red-900/50 border border-red-700 text-red-200 text-xs p-3 rounded-lg flex items-start gap-2">
+                <i data-lucide="x" class="w-4 h-4 mt-0.5 flex-shrink-0"></i>
+                <div id="errorText"></div>
+            </div>
+        </div>
+
+        <!-- Right Column: Output (8 cols) -->
+        <div class="lg:col-span-8 h-full min-h-[500px] flex flex-col">
+            <div class="flex items-center justify-between mb-2">
+                <h2 class="text-sm font-semibold text-slate-300 flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                    ON AIR SCRIPT
+                </h2>
+                <div id="scriptActions" class="flex gap-2 hidden">
+                    <button id="copyBtn" class="flex items-center gap-1 text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-md border border-slate-700 transition-colors">
+                        <i data-lucide="copy" class="w-3 h-3"></i>
+                        コピー
+                    </button>
+                </div>
+            </div>
+
+            <div class="flex-grow bg-slate-50 rounded-lg shadow-2xl overflow-hidden relative border-4 border-slate-800 flex flex-col">
+                <!-- Paper Texture Overlay -->
+                <div class="absolute inset-0 pointer-events-none opacity-5 bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')] z-10"></div>
+                
+                <!-- Header in the paper -->
+                <div class="bg-slate-100 border-b border-slate-300 p-4 z-0 flex items-center gap-4">
+                   <div id="paperIconContainer" class="w-16 h-16 bg-slate-200 rounded-full border-2 border-slate-300 overflow-hidden flex items-center justify-center flex-shrink-0 text-slate-500">
+                      <!-- JSでアイコンを挿入 -->
+                      <i data-lucide="radio" class="w-8 h-8"></i>
+                   </div>
+                   <div>
+                     <h3 id="paperPersonaName" class="font-bold text-slate-800 text-lg leading-none">---</h3>
+                     <p id="paperTopic" class="text-slate-500 text-xs mt-1">Topic: ---</p>
+                   </div>
+                   <div class="ml-auto text-slate-400 text-xs font-mono border border-slate-300 px-2 py-1 rounded">
+                     RADIO SCRIPT v1.2 HTML
+                   </div>
+                </div>
+
+                <div class="flex-grow overflow-y-auto p-8 font-mono text-slate-800 leading-relaxed z-0 relative flex flex-col">
+                    
+                    <!-- Empty State -->
+                    <div id="emptyState" class="flex-grow flex flex-col items-center justify-center text-slate-400 space-y-4 min-h-[300px]">
+                        <i data-lucide="radio" class="w-16 h-16 opacity-20"></i>
+                        <p class="text-sm text-center opacity-60">
+                            左のパネルからテーマを入力して<br />
+                            「台本を生成」を押してください
+                        </p>
+                    </div>
+
+                    <!-- Loading State -->
+                    <div id="loadingState" class="hidden space-y-6 animate-pulse mt-4 flex-grow">
+                        <div class="flex gap-4">
+                            <div class="w-12 h-12 bg-slate-200 rounded-full flex-shrink-0"></div>
+                            <div class="space-y-2 flex-grow pt-2">
+                                <div class="h-4 bg-slate-200 rounded w-1/4"></div>
+                                <div class="h-4 bg-slate-200 rounded w-full"></div>
+                                <div class="h-4 bg-slate-200 rounded w-5/6"></div>
+                            </div>
+                        </div>
+                        <div class="flex gap-4">
+                            <div class="w-12 h-12 bg-slate-200 rounded-full flex-shrink-0"></div>
+                            <div class="space-y-2 flex-grow pt-2">
+                                <div class="h-4 bg-slate-200 rounded w-1/5"></div>
+                                <div class="h-4 bg-slate-200 rounded w-full"></div>
+                                <div class="h-4 bg-slate-200 rounded w-4/5"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Script Content -->
+                    <div id="scriptContent" class="hidden whitespace-pre-wrap text-base md:text-lg text-slate-900 mb-8"></div>
+                    
+                    <!-- Bottom Action Area (Play Button) -->
+                    <div id="bottomActions" class="hidden border-t-2 border-slate-200 pt-6 mt-auto">
+                        <button id="playAudioBtn" class="w-full bg-slate-200 hover:bg-slate-300 text-slate-600 font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors">
+                            <i data-lucide="volume-2" class="w-5 h-5"></i>
+                            音声を再生 (Voicevox)
+                        </button>
+                        <div id="audioStatus" class="text-center text-xs text-slate-400 mt-2 h-4"></div>
+                        <p class="text-center text-[10px] text-slate-400 mt-1">※役名や（ト書き）は自動で除外されて読み上げられます</p>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script src="app.js"></script>
+</body>
+</html>
