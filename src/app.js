@@ -37,24 +37,6 @@ const PRESET_PERSONAS = [
         ルナ: 「...」`
     },
     {
-        id: 'comedy_duo',
-        name: 'お笑いコンビのラジオ',
-        type: 'preset',
-        icon: 'volume-2',
-        color: 'text-yellow-400',
-        description: 'ボケとツッコミの掛け合いで進む、賑やかなトーク番組。',
-        systemPrompt: `あなたはお笑いラジオ番組の構成作家です。お笑いコンビ「電光石火」のラジオ台本を書いてください。
-        音声合成で読み上げるため、以下の点に注意してください。
-        1. 役名は「タケ: 」または「ケン: 」の形式で書いてください。
-        2. ト書き（効果音や動作）は必ず丸括弧（ ）で囲んでください。
-        3. 絵文字は使わず、言葉で表現してください。
-
-        # 出力例
-        タケ: 「どうもー！電光石火のタケです！」
-        ケン: 「ケンです。お願いしますー。」
-        タケ: 「...」`
-    },
-    {
         id: 'tech_news',
         name: 'テックニュース解説員',
         type: 'preset',
@@ -379,7 +361,6 @@ class RadioApp {
             i.className = `w-8 h-8 ${persona.color.replace('w-5 h-5', '')}`;
             if(persona.id === 'morning_dj') i.className = 'w-8 h-8 text-orange-400';
             if(persona.id === 'late_night') i.className = 'w-8 h-8 text-indigo-400';
-            if(persona.id === 'comedy_duo') i.className = 'w-8 h-8 text-yellow-400';
             if(persona.id === 'tech_news') i.className = 'w-8 h-8 text-cyan-400';
             
             const div = document.createElement('div');
@@ -647,8 +628,9 @@ class RadioApp {
 
     cleanTextForTTS(rawText) {
         let ttsText = rawText.replace(/^.+?:/gm, ''); // Remove Name:
-        ttsText = ttsText.replace(/（.*?）/g, ''); // Remove full-width parens
-        ttsText = ttsText.replace(/\(.*?\)/g, ''); // Remove half-width parens
+        ttsText = ttsText.replace(/（[\s\S]*?）/g, ''); // Remove full-width parens
+        ttsText = ttsText.replace(/\([\s\S]*?\)/g, ''); // Remove half-width parens
+        ttsText = ttsText.replace(/【[\s\S]*?】/g, ''); // Remove thick brackets
         return ttsText.trim();
     }
 
@@ -680,8 +662,8 @@ class RadioApp {
         this.els.playAudioBtn.innerHTML = `<i data-lucide="square" class="w-5 h-5 fill-current"></i> 停止`;
         lucide.createIcons();
 
-        const lines = this.state.script.split('\n');
-        const validLines = lines.filter(line => this.cleanTextForTTS(line).length > 0);
+        const cleanedScript = this.cleanTextForTTS(this.state.script);
+        const validLines = cleanedScript.split('\n').map(line => line.trim()).filter(line => line.length > 0);
         
         if (validLines.length === 0) {
             this.els.audioStatus.textContent = "再生可能なセリフがありません";
@@ -693,7 +675,7 @@ class RadioApp {
         }
 
         try {
-            let nextAudioPromise = this.createAudioBlob(this.cleanTextForTTS(validLines[0]));
+            let nextAudioPromise = this.createAudioBlob(validLines[0]);
             
             for (let i = 0; i < validLines.length; i++) {
                 if (!this.state.isPlaying) break;
@@ -704,7 +686,7 @@ class RadioApp {
                 const { blobUrl, text } = await nextAudioPromise;
 
                 if (i + 1 < validLines.length) {
-                    const nextText = this.cleanTextForTTS(validLines[i+1]);
+                    const nextText = validLines[i+1];
                     nextAudioPromise = this.createAudioBlob(nextText);
                 } else {
                     nextAudioPromise = null;
@@ -809,8 +791,12 @@ class RadioApp {
             }
 
             const data = await response.json();
-            const content = data.choices[0]?.message?.content || "生成されたテキストが空でした。";
+            let content = data.choices[0]?.message?.content || "生成されたテキストが空でした。";
             
+            if (this.els.ttsSpeakerSelect.selectedIndex >= 0) {
+                content += `\n\nSpeaker: ${this.els.ttsSpeakerSelect.options[this.els.ttsSpeakerSelect.selectedIndex].text}`;
+            }
+
             this.state.script = content;
             this.els.scriptContent.textContent = content;
             this.els.scriptContent.classList.remove('hidden');
