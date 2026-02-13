@@ -64,8 +64,9 @@ class RadioApp {
             ttsUrl: 'http://192.168.10.106:8080',
             ttsKey: '',
             ttsSpeakerId: '1',
-            
+
             selectedPersonaId: PRESET_PERSONAS[0].id,
+            personalityName: 'AIパーソナリティもも',
             customPersona: {
                 id: 'custom',
                 name: 'オリジナル・パーソナリティ',
@@ -115,6 +116,7 @@ class RadioApp {
             customPersonaEditor: document.getElementById('customPersonaEditor'),
             iconFileInput: document.getElementById('iconFileInput'),
             customIconPreview: document.getElementById('customIconPreview'),
+            personalityNameInput: document.getElementById('personalityNameInput'),
             customNameInput: document.getElementById('customNameInput'),
             customPromptInput: document.getElementById('customPromptInput'),
             generateBtn: document.getElementById('generateBtn'),
@@ -139,9 +141,9 @@ class RadioApp {
         this.updatePaperHeader();
         this.updateInputsFromState();
         this.bindEvents();
-        
+
         lucide.createIcons();
-        
+
         // Set initial selected value for speaker
         if (this.state.ttsSpeakerId) {
             const exists = Array.from(this.els.ttsSpeakerSelect.options).some(opt => opt.value === this.state.ttsSpeakerId);
@@ -156,12 +158,12 @@ class RadioApp {
     }
     bindEvents() {
         this.els.toggleSettingsBtn.onclick = () => this.els.settingsPanel.classList.toggle('hidden');
-        
+
         // Settings Inputs
         this.els.apiUrlInput.oninput = (e) => this.updateSetting('apiUrl', e.target.value, 'radio_maker_api_url');
         this.els.apiKeyInput.oninput = (e) => this.updateSetting('apiKey', e.target.value, 'radio_maker_api_key');
         this.els.modelIdInput.oninput = (e) => this.updateSetting('modelId', e.target.value, 'radio_maker_model_id');
-        
+
         this.els.testConnectionBtn.onclick = () => this.handleTestConnection();
         this.els.fetchModelsBtn.onclick = () => this.handleFetchModels();
         this.els.modelSelect.onchange = (e) => {
@@ -180,10 +182,14 @@ class RadioApp {
         // Main Actions
         this.els.playAudioBtn.onclick = () => this.handlePlayAudio();
         this.els.generateBtn.onclick = () => this.handleGenerateScript();
-        
+
         // Inputs
         this.els.topicInput.oninput = (e) => {
             this.state.topic = e.target.value;
+            this.updatePaperHeader();
+        };
+        this.els.personalityNameInput.oninput = (e) => {
+            this.state.personalityName = e.target.value;
             this.updatePaperHeader();
         };
         this.els.referenceInput.oninput = (e) => {
@@ -237,7 +243,7 @@ class RadioApp {
             { s: 'radio_maker_tts_key', k: 'ttsKey' },
             { s: 'radio_maker_tts_speaker', k: 'ttsSpeakerId' }
         ];
-        keys.forEach(({s, k}) => {
+        keys.forEach(({ s, k }) => {
             const val = localStorage.getItem(s);
             if (val) this.state[k] = val;
         });
@@ -247,6 +253,7 @@ class RadioApp {
         this.els.apiUrlInput.value = this.state.apiUrl;
         this.els.apiKeyInput.value = this.state.apiKey;
         this.els.modelIdInput.value = this.state.modelId;
+        this.els.personalityNameInput.value = this.state.personalityName;
         this.els.customNameInput.value = this.state.customPersona.name;
         this.els.customPromptInput.value = this.state.customPersona.systemPrompt;
         this.els.ttsUrlInput.value = this.state.ttsUrl;
@@ -261,14 +268,13 @@ class RadioApp {
         PRESET_PERSONAS.forEach(persona => {
             const btn = document.createElement('button');
             const isSelected = this.state.selectedPersonaId === persona.id;
-            
-            btn.className = `w-full text-left p-3 rounded-lg border transition-all duration-200 flex items-start gap-3 ${
-                isSelected 
-                  ? 'bg-purple-900/30 border-purple-500 shadow-[0_0_15px_rgba(168,85,247,0.3)]' 
-                  : 'bg-slate-800 border-slate-700 hover:border-slate-600'
-            }`;
+
+            btn.className = `w-full text-left p-3 rounded-lg border transition-all duration-200 flex items-start gap-3 ${isSelected
+                ? 'bg-purple-900/30 border-purple-500 shadow-[0_0_15px_rgba(168,85,247,0.3)]'
+                : 'bg-slate-800 border-slate-700 hover:border-slate-600'
+                }`;
             btn.onclick = () => this.selectPersona(persona.id);
-            
+
             btn.innerHTML = `
                 <div class="mt-1 flex-shrink-0">
                     <i data-lucide="${persona.icon}" class="w-5 h-5 ${persona.color}"></i>
@@ -288,13 +294,12 @@ class RadioApp {
         // Custom Button
         const customBtn = document.createElement('button');
         const isCustomSelected = this.state.selectedPersonaId === 'custom';
-        customBtn.className = `w-full text-left p-3 rounded-lg border transition-all duration-200 flex items-start gap-3 ${
-            isCustomSelected
-                ? 'bg-purple-900/30 border-purple-500 shadow-[0_0_15px_rgba(168,85,247,0.3)]' 
-                : 'bg-slate-800 border-dashed border-slate-600 hover:border-slate-500 hover:bg-slate-800/50'
-        }`;
+        customBtn.className = `w-full text-left p-3 rounded-lg border transition-all duration-200 flex items-start gap-3 ${isCustomSelected
+            ? 'bg-purple-900/30 border-purple-500 shadow-[0_0_15px_rgba(168,85,247,0.3)]'
+            : 'bg-slate-800 border-dashed border-slate-600 hover:border-slate-500 hover:bg-slate-800/50'
+            }`;
         customBtn.onclick = () => this.selectPersona('custom');
-        
+
         let iconHtml = '';
         if (this.state.customPersona.iconUrl) {
             iconHtml = `<img src="${this.state.customPersona.iconUrl}" class="w-5 h-5 rounded-full object-cover">`;
@@ -320,7 +325,7 @@ class RadioApp {
     selectPersona(id) {
         this.state.selectedPersonaId = id;
         this.renderPersonaList();
-        
+
         if (id === 'custom') {
             this.els.customPersonaEditor.classList.remove('hidden');
         } else {
@@ -338,8 +343,8 @@ class RadioApp {
 
     updatePaperHeader() {
         const persona = this.getCurrentPersona();
-        this.els.paperPersonaName.textContent = persona.name;
-        
+        this.els.paperPersonaName.textContent = this.state.personalityName || persona.name;
+
         const topicText = this.els.topicInput.value.trim();
         const refText = this.els.referenceInput.value.trim();
         this.els.paperTopic.textContent = `Topic: ${topicText || 'フリートーク'} ${refText ? '(+参考資料)' : ''}`;
@@ -359,10 +364,10 @@ class RadioApp {
             const i = document.createElement('i');
             i.setAttribute('data-lucide', persona.icon);
             i.className = `w-8 h-8 ${persona.color.replace('w-5 h-5', '')}`;
-            if(persona.id === 'morning_dj') i.className = 'w-8 h-8 text-orange-400';
-            if(persona.id === 'late_night') i.className = 'w-8 h-8 text-indigo-400';
-            if(persona.id === 'tech_news') i.className = 'w-8 h-8 text-cyan-400';
-            
+            if (persona.id === 'morning_dj') i.className = 'w-8 h-8 text-orange-400';
+            if (persona.id === 'late_night') i.className = 'w-8 h-8 text-indigo-400';
+            if (persona.id === 'tech_news') i.className = 'w-8 h-8 text-cyan-400';
+
             const div = document.createElement('div');
             div.className = 'scale-150 flex items-center justify-center';
             div.appendChild(i);
@@ -377,7 +382,7 @@ class RadioApp {
 
     async handleTestConnection() {
         this.state.apiUrl = this.els.apiUrlInput.value;
-        
+
         this.els.testConnectionBtn.disabled = true;
         this.els.testConnectionBtn.innerHTML = '<i data-lucide="refresh-cw" class="w-4 h-4 animate-spin"></i>';
         lucide.createIcons();
@@ -395,7 +400,7 @@ class RadioApp {
                 this.els.testConnectionBtn.className = "px-3 py-2 rounded text-xs font-semibold border bg-green-900/30 border-green-700 text-green-400 transition-all";
                 this.els.connectionStatusMsg.className = "text-[10px] text-green-400 mt-1 flex items-center gap-1";
                 this.els.connectionStatusMsg.innerHTML = '<i data-lucide="check-circle" class="w-3 h-3"></i> 接続成功';
-                
+
                 const data = await response.json();
                 if (Array.isArray(data.data)) {
                     this.updateModelSelect(data.data);
@@ -407,13 +412,13 @@ class RadioApp {
             this.els.testConnectionBtn.className = "px-3 py-2 rounded text-xs font-semibold border bg-red-900/30 border-red-700 text-red-400 transition-all";
             this.els.connectionStatusMsg.className = "text-[10px] text-red-400 mt-1 flex items-center gap-1";
             this.els.connectionStatusMsg.innerHTML = `<i data-lucide="alert-circle" class="w-3 h-3"></i> 失敗: ${err.message}`;
-            
+
             if (window.location.protocol === 'file:' && err.message.includes('Failed to fetch')) {
                 alert('注意: HTMLファイルを直接開いているため、CORSエラーが発生している可能性があります。VS CodeのLive Serverなどを使ってWebサーバー経由で開いてください。');
             }
         } finally {
             this.els.testConnectionBtn.disabled = false;
-            if(!this.els.testConnectionBtn.innerHTML.includes('wifi')) {
+            if (!this.els.testConnectionBtn.innerHTML.includes('wifi')) {
                 this.els.testConnectionBtn.innerHTML = '<i data-lucide="wifi" class="w-4 h-4"></i>';
             }
             lucide.createIcons();
@@ -449,7 +454,7 @@ class RadioApp {
             this.els.modelFetchErrorMsg.innerHTML = `<span class="flex items-center gap-1"><i data-lucide="alert-circle" class="w-3 h-3"></i> 接続エラー: ${err.message}。CORS設定等を確認してください。</span>`;
             this.els.modelFetchErrorMsg.className = 'text-xs text-red-400 mt-1';
             lucide.createIcons();
-            
+
             if (window.location.protocol === 'file:' && err.message.includes('Failed to fetch')) {
                 alert('注意: CORSエラーの可能性があります。Webサーバー経由で開いてください。');
             }
@@ -486,17 +491,17 @@ class RadioApp {
             if (!this.state.ttsUrl) throw new Error("URL未設定");
             const baseUrl = this.cleanUrl(this.state.ttsUrl);
             const endpoint = `${baseUrl}/api/speakers`;
-            
+
             const headers = {};
             if (this.state.ttsKey) headers['X-API-KEY'] = this.state.ttsKey;
 
             const response = await fetch(endpoint, { method: 'GET', headers });
-            
+
             if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
 
             const speakers = await response.json();
             this.updateSpeakerSelect(speakers);
-            
+
             this.els.ttsSpeakerFetchErrorMsg.textContent = 'リストを更新しました';
             this.els.ttsSpeakerFetchErrorMsg.className = 'text-[10px] text-green-400 mt-1';
 
@@ -573,7 +578,7 @@ class RadioApp {
             if (!this.state.isPlaying) throw new Error("Playback stopped");
 
             await this.wait(3000);
-            
+
             const statusResponse = await fetch(statusEndpoint, { method: 'GET', headers });
             if (!statusResponse.ok) {
                 console.warn(`Status check failed: ${statusResponse.status}`);
@@ -582,8 +587,8 @@ class RadioApp {
             }
 
             const statusData = await statusResponse.json();
-            const currentStatus = (statusData.status || '').toUpperCase(); 
-            
+            const currentStatus = (statusData.status || '').toUpperCase();
+
             if (['COMPLETED', 'DONE', 'SUCCESS', 'FINISHED'].includes(currentStatus)) {
                 isComplete = true;
             } else if (['FAILED', 'ERROR'].includes(currentStatus)) {
@@ -598,30 +603,30 @@ class RadioApp {
         const resultEndpoint = `${baseUrl}/api/tasks/${jobId}/result`;
         const audioResponse = await fetch(resultEndpoint, { method: 'GET', headers });
         if (!audioResponse.ok) throw new Error(`Audio Download Error ${audioResponse.status}`);
-        
+
         const blob = await audioResponse.blob();
         const blobUrl = URL.createObjectURL(blob);
-        
+
         return { blobUrl, text };
     }
 
     playAudioFromBlob(blobUrl) {
         return new Promise((resolve, reject) => {
             const audio = new Audio(blobUrl);
-            this.state.audioElement = audio; 
-            
+            this.state.audioElement = audio;
+
             audio.onended = () => {
                 URL.revokeObjectURL(blobUrl);
                 this.state.audioElement = null;
                 resolve();
             };
-            
+
             audio.onerror = (e) => {
                 URL.revokeObjectURL(blobUrl);
                 console.error("Audio Playback Error", e);
                 reject(new Error("Playback failed."));
             };
-            
+
             audio.play().catch(reject);
         });
     }
@@ -664,7 +669,7 @@ class RadioApp {
 
         const cleanedScript = this.cleanTextForTTS(this.state.script);
         const validLines = cleanedScript.split('\n').map(line => line.trim()).filter(line => line.length > 0);
-        
+
         if (validLines.length === 0) {
             this.els.audioStatus.textContent = "再生可能なセリフがありません";
             this.els.audioStatus.className = "text-center text-xs text-red-400 mt-2 h-4";
@@ -676,17 +681,17 @@ class RadioApp {
 
         try {
             let nextAudioPromise = this.createAudioBlob(validLines[0]);
-            
+
             for (let i = 0; i < validLines.length; i++) {
                 if (!this.state.isPlaying) break;
 
                 this.els.audioStatus.textContent = `準備中 (${i + 1}/${validLines.length})...`;
                 this.els.audioStatus.className = "text-center text-xs text-slate-400 mt-2 h-4 animate-pulse";
-                
+
                 const { blobUrl, text } = await nextAudioPromise;
 
                 if (i + 1 < validLines.length) {
-                    const nextText = validLines[i+1];
+                    const nextText = validLines[i + 1];
                     nextAudioPromise = this.createAudioBlob(nextText);
                 } else {
                     nextAudioPromise = null;
@@ -697,17 +702,17 @@ class RadioApp {
                 const displayNum = i + 1;
                 const totalNum = validLines.length;
                 const shortText = text.substring(0, 15) + (text.length > 15 ? '...' : '');
-                
+
                 this.els.audioStatus.textContent = `再生中 (${displayNum}/${totalNum}): ${shortText}`;
                 this.els.audioStatus.className = "text-center text-xs text-cyan-500 mt-2 h-4 animate-pulse";
 
                 await this.playAudioFromBlob(blobUrl);
 
                 if (this.state.isPlaying && i < validLines.length - 1) {
-                    await this.wait(500); 
+                    await this.wait(500);
                 }
             }
-            
+
             if (this.state.isPlaying) {
                 this.els.audioStatus.textContent = "再生完了";
                 this.els.audioStatus.className = "text-center text-xs text-green-400 mt-2 h-4";
@@ -735,7 +740,7 @@ class RadioApp {
     async handleGenerateScript() {
         const topic = this.els.topicInput.value.trim();
         const refText = this.els.referenceInput.value.trim();
-        
+
         if (!topic && !refText) {
             this.showError('テーマまたは参考資料を入力してください。');
             return;
@@ -744,7 +749,7 @@ class RadioApp {
         this.hideError();
         this.state.isLoading = true;
         this.updateGenerateBtnState();
-        
+
         this.els.emptyState.classList.add('hidden');
         this.els.scriptContent.classList.add('hidden');
         this.els.scriptContent.textContent = '';
@@ -756,8 +761,26 @@ class RadioApp {
             this.state.apiUrl = this.els.apiUrlInput.value;
             this.state.apiKey = this.els.apiKeyInput.value;
             this.state.modelId = this.els.modelIdInput.value;
-            
+
             const persona = this.getCurrentPersona();
+            const nameToUse = this.state.personalityName || persona.name;
+
+            // プリセットに含まれる特定の名前を置換するためのマップ
+            const replacementMap = {
+                'morning_dj': 'サニー',
+                'late_night': 'ルナ',
+                'tech_news': 'ギーク先生'
+            };
+
+            let basePrompt = persona.systemPrompt;
+            const originalName = replacementMap[persona.id];
+            if (originalName) {
+                // 全ての出現箇所を置換（RegExpを使用してグローバル置換）
+                basePrompt = basePrompt.replace(new RegExp(originalName, 'g'), nameToUse);
+            }
+
+            const systemPromptWithCustomName = `あなたの名前は「${nameToUse}」です。役名も「${nameToUse}: 」として出力してください。\n\n${basePrompt}`;
+
             let userContent = `今回のラジオのテーマは「${topic}」です。`;
             if (refText) {
                 userContent += `\n\n以下の【参考資料/ニュース記事】の内容を元に、リスナーに分かりやすく紹介・解説する形で台本を作成してください。\n\n【参考資料/ニュース記事】\n${refText}`;
@@ -777,7 +800,7 @@ class RadioApp {
                 body: JSON.stringify({
                     model: this.state.modelId,
                     messages: [
-                        { role: "system", content: persona.systemPrompt },
+                        { role: "system", content: systemPromptWithCustomName },
                         { role: "user", content: userContent }
                     ],
                     temperature: 0.7,
@@ -792,7 +815,7 @@ class RadioApp {
 
             const data = await response.json();
             let content = data.choices[0]?.message?.content || "生成されたテキストが空でした。";
-            
+
             if (this.els.ttsSpeakerSelect.selectedIndex >= 0) {
                 content += `\n\nSpeaker: ${this.els.ttsSpeakerSelect.options[this.els.ttsSpeakerSelect.selectedIndex].text}`;
             }
@@ -801,9 +824,9 @@ class RadioApp {
             this.els.scriptContent.textContent = content;
             this.els.scriptContent.classList.remove('hidden');
             this.els.scriptActions.classList.remove('hidden');
-            
+
             this.els.bottomActions.classList.remove('hidden');
-            this.els.audioStatus.textContent = ""; 
+            this.els.audioStatus.textContent = "";
 
         } catch (err) {
             console.error(err);
@@ -850,7 +873,7 @@ class RadioApp {
             textarea.select();
             document.execCommand('copy');
             document.body.removeChild(textarea);
-            
+
             const originalText = this.els.copyBtn.innerHTML;
             this.els.copyBtn.innerHTML = '<i data-lucide="check" class="w-3 h-3"></i> コピー完了';
             lucide.createIcons();
