@@ -20,25 +20,26 @@ class RadioAutomator:
         return {}
 
     def fetch_news(self, custom_url=None):
-        """Fetch news from a specific URL or default Yahoo RSS."""
+        """Fetch news from a specific URL or default local feed as JSON."""
         try:
-            url = custom_url or "https://news.yahoo.co.jp/rss/topics/top-picks.xml"
+            url = custom_url or "http://192.168.10.106:9090/feed"
             resp = requests.get(url)
             resp.raise_for_status()
             
-            if "rss" in url or ".xml" in url:
-                soup = BeautifulSoup(resp.content, 'xml')
-                items = soup.find_all('item')
-                news_list = []
-                for item in items[:5]: # Take top 5
-                    title = item.find('title').text
-                    description = item.find('description').text
-                    news_list.append(f"【{title}】\n{description}")
-                return "\n\n".join(news_list)
-            else:
-                # Basic HTML fallback
-                soup = BeautifulSoup(resp.content, 'html.parser')
-                return soup.get_text()[:3000]
+            # Parse as JSON
+            data = resp.json()
+            if isinstance(data, list) and len(data) > 0:
+                first_item = data[0]
+                title = first_item.get('title', 'No Title')
+                description = first_item.get('description') or first_item.get('content') or ""
+                return f"【{title}】\n{description}"
+            elif isinstance(data, dict):
+                # Fallback for single object response
+                title = data.get('title', 'No Title')
+                description = data.get('description') or data.get('content') or ""
+                return f"【{title}】\n{description}"
+            
+            return "ニュースデータが見つかりませんでした。"
         except Exception as e:
             print(f"Error fetching news: {e}")
             return "最新ニュースの取得に失敗しました。"
