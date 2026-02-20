@@ -57,5 +57,40 @@ http://localhost:5500
 *   `Dockerfile`: 配信用の簡易 Web サーバー設定
 *   `compose.yml`: コンテナ起動設定
 
+## REST API (バックエンド自動化)
+
+バックエンドの自動実行機能を外部から操作・監視するための API です。
+
+### 1. 動作状況の確認
+現在の生成ステータスを確認します。
+```bash
+curl http://localhost:5500/api/automation/status
+
+curl http://192.168.10.106:5500/api/automation/status
+```
+
+### 2. テスト実行 (デフォルト設定)
+サーバーに保存された設定を使って、自動生成を開始します。
+```bash
+curl http://localhost:5500/api/automation/test
+
+curl http://192.168.10.106:5500/api/automation/test
+```
+
+### 3. パラメータ指定での実行
+特定のニュースURLを指定して、生成を開始します。
+```bash
+curl -X POST -H "Content-Type: application/json" \
+     -d '{"url":"https://news.yahoo.co.jp/rss/topics/top-picks.xml"}' \
+     http://localhost:5500/api/automation/run
+
+curl -X POST -H "Content-Type: application/json" \
+     -d '{"url":"https://news.yahoo.co.jp/rss/topics/top-picks.xml"}' \
+     http://192.168.10.106:5500/api/automation/run
+```
+
+> [!NOTE]
+> 自動実行には、UIの「設定をサーバーに同期」ボタンであらかじめ API キーなどの設定を保存しておく必要があります。
+
 ## License
 MIT# AI-Radio-Maker

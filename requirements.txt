@@ -1,1 +1,8 @@
-# No external dependencies required
+flask
+requests
+beautifulsoup4
+flask-cors
+pydub
+apscheduler
+python-dotenv
+lxml
